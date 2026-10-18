@@ -52,7 +52,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
     <button id="soundToggle" class="sound-btn" aria-label="音と読み上げの切り替え">🔊 おと ON</button>
   </div>
 
-  <div style="display:flex;justify-content:space-between;font-weight:850;margin-top:12px"><span id="rowname">かずの かんじ</span><span id="position">1 / 80</span></div>
+  <div style="display:flex;justify-content:space-between;font-weight:850;margin-top:12px"><span id="rowname">① かずの かんじ</span><span id="position">1 / 80</span></div>
   <div class="progress"><div id="progress"></div></div>
   
   <div class="layout">
@@ -212,7 +212,7 @@ let idx=0, guide=true, autoShownGuide=false, done=new Set(), drawing=false, inkS
 // モード管理（じゅんばん / ランダム）
 let isRandom=false, randomOrder=[], randomPos=0;
 
-// 効果音（Web Audio API）＆ 音声読み上げ（Web Speech API）
+// 効果音（Web Audio API）
 let soundEnabled=true, audioCtx=null;
 function getAudio(){
   if(!soundEnabled)return null;
@@ -251,25 +251,100 @@ const sfx={
   }
 };
 
-// 漢字の音声読み上げ関数
-function speakCurrentKanji(force=false){
-  if((!soundEnabled && !force) || !('speechSynthesis' in window))return;
-  try{
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(speeches[idx]);
-    u.lang = 'ja-JP';
-    u.rate = 0.9; // 1年生が聞き取りやすいよう少しゆっくりめ
-    u.pitch = 1.05;
-    const voices = window.speechSynthesis.getVoices();
-    const jaVoice = voices.find(v => v.lang && v.lang.startsWith('ja'));
-    if(jaVoice) u.voice = jaVoice;
-    window.speechSynthesis.speak(u);
-  }catch(e){
-    console.warn('Speech synthesis failed:', e);
+// =========================================================
+// 音声読み上げ（Silkブラウザ対応・オンラインTTSフォールバック付き）
+// =========================================================
+let ttsAudio = null;
+let speechTimer = 0;
+let currentSpeechToken = 0;
+const isSilk = /Silk\//i.test(navigator.userAgent || '');
+
+function stopAllSpeech(){
+  clearTimeout(speechTimer);
+  if('speechSynthesis' in window){
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+  }
+  if(ttsAudio){
+    try{ ttsAudio.pause(); ttsAudio.currentTime = 0; }catch(e){}
   }
 }
+
+// オンライン音声（HTML5 Audio）による読み上げフォールバック
+function playCloudTTS(text, token){
+  if(token !== currentSpeechToken) return;
+  const urls = [
+    `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ja&ttsspeed=0.85&q=${encodeURIComponent(text)}`,
+    `https://dict.youdao.com/dictvoice?le=jap&audio=${encodeURIComponent(text)}`
+  ];
+  let urlIdx = 0;
+  function tryPlay(){
+    if(token !== currentSpeechToken || urlIdx >= urls.length) return;
+    if(!ttsAudio) ttsAudio = new Audio();
+    ttsAudio.src = urls[urlIdx++];
+    ttsAudio.playbackRate = 0.95;
+    const p = ttsAudio.play();
+    if(p && typeof p.catch === 'function'){
+      p.catch(() => tryPlay());
+    }
+  }
+  tryPlay();
+}
+
+function speakCurrentKanji(force=false){
+  if(!soundEnabled && !force) return;
+  const token = ++currentSpeechToken;
+  const text = speeches[idx];
+  stopAllSpeech();
+
+  // Silkブラウザは標準speechSynthesisが動作しないケースが多いため、
+  // 日本語ボイスが明示的に取得できない場合は即座にオンラインTTSを使用する
+  const hasSynth = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
+  let voices = [];
+  if(hasSynth){
+    try{ voices = window.speechSynthesis.getVoices() || []; }catch(e){}
+  }
+  // Android等では ja_JP のようにアンダースコアになることがあるため両方対応
+  const jaVoice = voices.find(v => v.lang && /^ja([-_]|$)/i.test(v.lang));
+
+  if(!hasSynth || (isSilk && !jaVoice)){
+    playCloudTTS(text, token);
+    return;
+  }
+
+  // speechSynthesisを試行し、0.35秒以内に再生が始まらなければオンラインTTSへ自動切り替え
+  speechTimer = setTimeout(() => {
+    if(token !== currentSpeechToken) return;
+    try{
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = jaVoice ? jaVoice.lang : 'ja-JP';
+      if(jaVoice) u.voice = jaVoice;
+      u.rate = 0.9;
+      u.pitch = 1.05;
+
+      let started = false;
+      const fallbackWatchdog = setTimeout(() => {
+        if(!started && token === currentSpeechToken){
+          try{ window.speechSynthesis.cancel(); }catch(e){}
+          playCloudTTS(text, token);
+        }
+      }, 350);
+
+      u.onstart = () => { started = true; clearTimeout(fallbackWatchdog); };
+      u.onerror = () => {
+        clearTimeout(fallbackWatchdog);
+        if(!started && token === currentSpeechToken) playCloudTTS(text, token);
+      };
+
+      window.speechSynthesis. resume();
+      window.speechSynthesis.speak(u);
+    }catch(e){
+      playCloudTTS(text, token);
+    }
+  }, 50);
+}
+
 if('speechSynthesis' in window){
-  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  try{ window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices(); }catch(e){}
 }
 
 function makeRandomOrder(currentIdx){
@@ -404,10 +479,10 @@ $('modeRand').onclick=()=>{
 // 効果音＆読み上げ ON/OFF
 $('soundToggle').onclick=()=>{
   soundEnabled=!soundEnabled;
-  if(!soundEnabled && 'speechSynthesis' in window){
-    window.speechSynthesis.cancel();
-  }
-  if(soundEnabled){
+  if(!soundEnabled){
+    currentSpeechToken++;
+    stopAllSpeech();
+  }else{
     sfx.toggle();
     speakCurrentKanji();
   }
@@ -489,7 +564,6 @@ function strokeFetchUrl(c){
   return `https://cdn.jsdelivr.net/gh/parsimonhi/animCJK@master/svgsJa/${code}.svg`;
 }
 
-// SVGのシンプルな折れ線path（M x y L x y ...）から座標配列を抽出
 function parseMedianPath(d){
   const nums = (d.match(/-?\d+(?:\.\d+)?/g)||[]).map(Number);
   const pts = [];
@@ -508,7 +582,6 @@ async function loadStrokeData(){
     const svgText=await response.text();
     if(token!==loadToken)return;
     const doc=new DOMParser().parseFromString(svgText,'image/svg+xml');
-    // animCJKのSVGは clip-path外の実線pathがmedians（中心線）になっている
     const medianEls=Array.from(doc.querySelectorAll('path[clip-path]'));
     refPaths=medianEls.map((el,i)=>{
       const d=el.getAttribute('d')||'';
