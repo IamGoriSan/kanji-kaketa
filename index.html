@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!-- 外部TTSサーバーがReferer制限でブロックするのを防ぐ -->
+<meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#eaf3ff">
 <title>１ねんせいの かんじ れんしゅう</title>
 <style>
@@ -252,42 +254,63 @@ const sfx={
 };
 
 // =========================================================
-// 音声読み上げ（Silkブラウザ対応・オンラインTTSフォールバック付き）
+// 音声読み上げ（Silkブラウザ完全対応・同期Audio再生方式）
 // =========================================================
 let ttsAudio = null;
-let speechTimer = 0;
 let currentSpeechToken = 0;
-const isSilk = /Silk\//i.test(navigator.userAgent || '');
+// Fireタブレット（Silk / KF〜端末）かどうかを判定
+const ua = navigator.userAgent || '';
+const isSilkOrFire = /Silk|KF[A-Z0-9]+|Kindle|Amazon/i.test(ua);
+
+function ensureAudioElement(){
+  if(!ttsAudio){
+    ttsAudio = new Audio();
+    ttsAudio.preload = 'auto';
+    // 外部TTSサーバーがRefererチェックで弾くのを防ぐ
+    ttsAudio.referrerPolicy = 'no-referrer';
+  }
+  return ttsAudio;
+}
 
 function stopAllSpeech(){
-  clearTimeout(speechTimer);
   if('speechSynthesis' in window){
     try{ window.speechSynthesis.cancel(); }catch(e){}
   }
   if(ttsAudio){
-    try{ ttsAudio.pause(); ttsAudio.currentTime = 0; }catch(e){}
+    try{ ttsAudio.pause(); }catch(e){}
   }
 }
 
-// オンライン音声（HTML5 Audio）による読み上げフォールバック
-function playCloudTTS(text, token){
-  if(token !== currentSpeechToken) return;
+// オンライン音声（HTML5 Audio）をユーザータップと同期して直接再生する
+function playCloudTTSSync(text, token){
+  const audio = ensureAudioElement();
+  const q = encodeURIComponent(text);
+  // 複数のTTSエンドポイントを用意（万一1つ目がブロックされても自動で次を試行）
   const urls = [
-    `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ja&ttsspeed=0.85&q=${encodeURIComponent(text)}`,
-    `https://dict.youdao.com/dictvoice?le=jap&audio=${encodeURIComponent(text)}`
+    `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ja&ttsspeed=0.85&q=${q}`,
+    `https://dict.youdao.com/dictvoice?le=jap&audio=${q}`,
+    `https://api.streamelements.com/kappa/v2/speech?voice=Mizuki&text=${q}`
   ];
   let urlIdx = 0;
-  function tryPlay(){
+
+  function tryNext(){
     if(token !== currentSpeechToken || urlIdx >= urls.length) return;
-    if(!ttsAudio) ttsAudio = new Audio();
-    ttsAudio.src = urls[urlIdx++];
-    ttsAudio.playbackRate = 0.95;
-    const p = ttsAudio.play();
-    if(p && typeof p.catch === 'function'){
-      p.catch(() => tryPlay());
+    const url = urls[urlIdx++];
+    audio.onerror = () => tryNext();
+    audio.src = url;
+    audio.load();
+    const playPromise = audio.play();
+    if(playPromise && typeof playPromise.catch === 'function'){
+      playPromise.catch(err => {
+        // 通信エラーやデコードエラー時は次のURLへフォールバック
+        if(err && err.name !== 'AbortError'){
+          tryNext();
+        }
+      });
     }
   }
-  tryPlay();
+  // 重要：setTimeoutを使わず、タップイベントの同期処理内で即座にplay()を呼ぶ
+  tryNext();
 }
 
 function speakCurrentKanji(force=false){
@@ -296,51 +319,41 @@ function speakCurrentKanji(force=false){
   const text = speeches[idx];
   stopAllSpeech();
 
-  // Silkブラウザは標準speechSynthesisが動作しないケースが多いため、
-  // 日本語ボイスが明示的に取得できない場合は即座にオンラインTTSを使用する
+  // 1) Silkブラウザ / Fireタブレットの場合は、内蔵speechSynthesisが機能しないため
+  //    タップの瞬間に同期処理で直接オンライン音声（HTML5 Audio）を再生する
+  if(isSilkOrFire){
+    playCloudTTSSync(text, token);
+    return;
+  }
+
+  // 2) PCやiPad/一般的なスマホの場合：日本語音声があるか確認
   const hasSynth = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
   let voices = [];
   if(hasSynth){
     try{ voices = window.speechSynthesis.getVoices() || []; }catch(e){}
   }
-  // Android等では ja_JP のようにアンダースコアになることがあるため両方対応
   const jaVoice = voices.find(v => v.lang && /^ja([-_]|$)/i.test(v.lang));
 
-  if(!hasSynth || (isSilk && !jaVoice)){
-    playCloudTTS(text, token);
+  // 音声合成非対応、またはボイス一覧が取得済みなのに日本語ボイスが存在しない場合もオンライン音声へ
+  if(!hasSynth || (voices.length > 0 && !jaVoice)){
+    playCloudTTSSync(text, token);
     return;
   }
 
-  // speechSynthesisを試行し、0.35秒以内に再生が始まらなければオンラインTTSへ自動切り替え
-  speechTimer = setTimeout(() => {
-    if(token !== currentSpeechToken) return;
-    try{
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = jaVoice ? jaVoice.lang : 'ja-JP';
-      if(jaVoice) u.voice = jaVoice;
-      u.rate = 0.9;
-      u.pitch = 1.05;
-
-      let started = false;
-      const fallbackWatchdog = setTimeout(() => {
-        if(!started && token === currentSpeechToken){
-          try{ window.speechSynthesis.cancel(); }catch(e){}
-          playCloudTTS(text, token);
-        }
-      }, 350);
-
-      u.onstart = () => { started = true; clearTimeout(fallbackWatchdog); };
-      u.onerror = () => {
-        clearTimeout(fallbackWatchdog);
-        if(!started && token === currentSpeechToken) playCloudTTS(text, token);
-      };
-
-      window.speechSynthesis. resume();
-      window.speechSynthesis.speak(u);
-    }catch(e){
-      playCloudTTS(text, token);
-    }
-  }, 50);
+  // 3) 標準のWeb Speech APIで再生（万一エラーになった場合に備えAudioもアンロックしておく）
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = jaVoice ? jaVoice.lang : 'ja-JP';
+    if(jaVoice) u.voice = jaVoice;
+    u.rate = 0.9;
+    u.pitch = 1.05;
+    u.onerror = () => {
+      if(token === currentSpeechToken) playCloudTTSSync(text, token);
+    };
+    window.speechSynthesis.speak(u);
+  }catch(e){
+    playCloudTTSSync(text, token);
+  }
 }
 
 if('speechSynthesis' in window){
