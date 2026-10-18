@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#eaf3ff">
+<title>１ねんせいの かんじ れんしゅう</title>
+<style>
+:root{--blue:#3478e5;--ink:#24344b;--soft:#edf3fb;--cream:#fffdf5;--green:#dcfce7}
+*{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:var(--ink);font-family:system-ui,-apple-system,"Yu Gothic",Meiryo,sans-serif}
+button{font:inherit;font-weight:800;border:0;border-radius:14px;padding:12px 14px;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.app{max-width:900px;margin:auto;padding:14px}.hero{background:#eaf3ff;border-radius:24px;padding:20px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}.eyebrow{font-size:12px;letter-spacing:.12em;color:#2563eb;font-weight:900}.title{font-size:clamp(22px,4vw,32px);font-weight:950;margin:3px 0}.sub{color:#64748b;font-size:14px}
+.counter{background:#fff;padding:12px;border-radius:16px;text-align:center;min-width:96px}.counter strong{font-size:24px;color:var(--blue)}
+.toolbar{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.mode-group{display:flex;gap:6px;flex:1}
+.mode-group button{padding:9px 12px;font-size:14px;flex:1}
+.sound-btn{padding:9px 12px;font-size:14px;background:#fff;color:var(--ink)}
+.progress{height:9px;background:#fff;border-radius:99px;overflow:hidden;margin:10px 0 16px}.progress>div{height:100%;background:#4ade80;width:0;transition:width .25s ease}
+.layout{display:grid;grid-template-columns:minmax(160px,.85fr) minmax(0,1.45fr);gap:14px}.panel{background:white;border-radius:18px;padding:16px}.letter-card{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:260px}
+.big{font-size:clamp(76px,12vw,112px);line-height:1.1;font-weight:700;color:var(--blue);font-family:"UD Digi Kyokasho N-R","UD Digi Kyokasho NP-R","Yu Kyokasho","BIZ UDPMincho","Yu Mincho","Hiragino Mincho ProN",serif;cursor:pointer;user-select:none;transition:transform .1s}
+.big:active{transform:scale(.94)}
+.reading{font-size:17px;font-weight:850;margin-top:4px;color:#1e293b}
+.word{margin-top:10px;padding:8px 14px;border-radius:99px;background:#fff4d8;color:#854d0e;font-weight:800;font-size:15px}
+.speak-btn{margin-top:10px;padding:7px 14px;font-size:13px;background:#e0f2fe;color:#0369a1;border-radius:99px;box-shadow:0 2px 0 #bae6fd}
+.speak-btn:active{transform:translateY(1px);box-shadow:none}
+.small{font-size:12px;color:#64748b}.board-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-weight:900}.board{position:relative;background:var(--cream);border:3px solid #e8d9b4;border-radius:18px;overflow:hidden;height:290px;touch-action:none}canvas{display:block;width:100%;height:100%;touch-action:none}.btnrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.btnrow button{flex:1;min-width:90px}.primary{background:var(--blue);color:#fff;box-shadow:0 3px 0 #2355ad}.soft{background:var(--soft);color:#334d70}.active{background:#dbeafe;color:#1d4ed8;outline:2px solid #60a5fa}.gold{background:#fef3c7;color:#92400e;box-shadow:0 3px 0 #d97706}.message{margin-top:12px;background:#fff;border-radius:15px;padding:12px;text-align:center;font-weight:850;color:#1d4ed8;min-height:48px}.section{margin-top:16px;background:white;border-radius:18px;padding:16px}.section-title{font-size:18px;font-weight:950;margin-bottom:10px}.grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}
+.letter{padding:8px 0;background:white;border:1px solid #e5e7eb;border-radius:10px;font-size:19px;font-family:"UD Digi Kyokasho N-R","BIZ UDPMincho","Yu Mincho",sans-serif}
+.letter.done{background:var(--green);border-color:#86efac}.letter.current{background:#dbeafe;border:2px solid #3b82f6;color:#1d4ed8}.hint{font-size:13px;color:#64748b;line-height:1.6}.checkresult{margin-top:9px;border-radius:12px;background:#f1f5f9;padding:10px;font-size:14px;font-weight:750}
+@media(max-width:600px){.app{padding:8px}.hero{padding:12px}.layout{grid-template-columns:1fr}.letter-card{min-height:190px}.big{font-size:78px}.board{height:260px}.grid{grid-template-columns:repeat(5,minmax(0,1fr))}.panel{padding:12px}.counter{min-width:78px}.counter strong{font-size:21px}}
+</style>
+</head>
+<body>
+<main class="app">
+<div class="hero">
+  <div class="top">
+    <div>
+      <div class="eyebrow">たのしく まなぼう！</div>
+      <div class="title">１ねんせいの かんじ</div>
+      <div class="sub">よんで・かいて・おぼえよう ✏️</div>
+    </div>
+    <div class="counter"><div class="small">れんしゅう</div><strong id="count">0</strong><span class="small"> / 80</span></div>
+  </div>
+  
+  <div class="toolbar">
+    <div class="mode-group">
+      <button id="modeSeq" class="active">🔢 じゅんばん</button>
+      <button id="modeRand" class="soft">🎲 ランダム</button>
+    </div>
+    <button id="soundToggle" class="sound-btn" aria-label="音と読み上げの切り替え">🔊 おと ON</button>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;font-weight:850;margin-top:12px"><span id="rowname">かずの かんじ</span><span id="position">1 / 80</span></div>
+  <div class="progress"><div id="progress"></div></div>
+  
+  <div class="layout">
+    <section class="panel letter-card">
+      <div class="small">きょうの かんじ（タップでよみあげ）</div>
+      <div id="big" class="big" title="タップして読み上げる">一</div>
+      <div id="sound" class="reading">いち / ひと(つ)</div>
+      <div id="word" class="word">一（いち）ばん</div>
+      <button id="speakBtn" class="speak-btn" type="button">🗣️ もういちど きく</button>
+    </section>
+    <section class="panel">
+      <div class="board-head"><span>ここに かこう！</span><span id="modehint" class="small">おてほんを なぞってみよう</span></div>
+      <div class="board"><canvas id="canvas" aria-label="漢字を書くエリア"></canvas></div>
+      <div class="btnrow">
+        <button id="guide" class="active">👁️ おてほん ON</button>
+        <button id="erase" class="soft">🧹 けす</button>
+      </div>
+    </section>
+  </div>
+  <div class="btnrow"><button id="prev" class="soft">← まえへ</button><button id="donebtn" class="gold">できた！ ⭐</button><button id="next" class="primary">つぎへ →</button></div>
+  <div id="message" class="message" aria-live="polite">じゅんび OK！ ゆっくり かいてみよう 🌟</div>
+</div>
+<section class="section">
+ <div class="section-title">📚 書き順を たしかめよう</div>
+ <div class="btnrow" style="margin-top:0"><button id="play" class="primary">▶ さいせい</button><button id="pause" class="soft">⏸ とめる</button><button id="one" class="soft">1画ずつ</button><button id="restart" class="soft">はじめから</button></div>
+ <div id="strokeinfo" class="checkresult">書き順データを読み込んでいます…</div>
+ <p class="hint">赤い線が書く順番、丸が書き始めの場所です。書き順データはオープンデータ（AnimCJK）を利用します。ネット接続がない場合は読み込めないことがあります。</p>
+</section>
+<section class="section">
+ <div class="section-title">かんじを えらぼう</div><div id="letters" class="grid"></div>
+ <div class="btnrow"><button id="prevrow" class="soft">← まえの グループ</button><button id="nextrow" class="soft">つぎの グループ →</button></div>
+</section>
+<p class="hint" style="text-align:center;padding:8px">あせらず たのしく れんしゅうしよう！ 🌈</p>
+</main>
+<script>
+(()=> {
+'use strict';
+
+// 小学校1年生の漢字（全80字）：[漢字, 表示用の読み, 例文・言葉, 音声読み上げ用テキスト]
+const kanjiList = [
+  // 1. かずの かんじ (0-10)
+  ['一','いち / ひと(つ)','一（いち）ばん','いち、ひとつ。いちばん'],
+  ['二','に / ふた(つ)','二（ふた）つ','に、ふたつ。ふたつ'],
+  ['三','さん / みっ(つ)','三（みっ）つ','さん、みっつ。みっつ'],
+  ['四','し / よん / よっ(つ)','四（よん）かい','し、よん、よっつ。よんかい'],
+  ['五','ご / いつ(つ)','五（いつ）つ','ご、いつつ。いつつ'],
+  ['六','ろく / むっ(つ)','六（むっ）つ','ろく、むっつ。むっつ'],
+  ['七','しち / なな(つ)','七（なな）つ','しち、ななつ。ななつ'],
+  ['八','はち / やっ(つ)','八（やっ）つ','はち、やっつ。やっつ'],
+  ['九','きゅう / ここの(つ)','九（ここの）つ','きゅう、ここのつ。ここのつ'],
+  ['十','じゅう / とお','十（じゅう）えん','じゅう、とお。じゅうえん'],
+
+  // 2. かずと ようび (10-20)
+  ['百','ひゃく','百（ひゃく）てん','ひゃく。ひゃくてん'],
+  ['千','せん','千（せん）えん','せん。せんえん'],
+  ['日','にち / ひ / か','日（にち）ようび','にち、ひ。にちようび'],
+  ['月','げつ / つき','お月（つき）さま','げつ、つき。おつきさま'],
+  ['火','か / ひ','火（か）ようび','か、ひ。かようび'],
+  ['水','すい / みず','つめたい 水（みず）','すい、みず。つめたい みず'],
+  ['木','もく / き','おおきな 木（き）','もく、き。おおきな き'],
+  ['金','きん / かね','金（きん）メダル','きん、かね。きんめだる'],
+  ['土','ど / つち','土（ど）ようび','ど、つち。どようび'],
+  ['年','ねん / とし','一（いち）年（ねん）生','ねん、とし。いちねんせい'],
+
+  // 3. しぜんの かんじ (20-30)
+  ['山','やま / さん','山（やま）に のぼる','やま、さん。やまに のぼる'],
+  ['川','かわ','きれいな 川（かわ）','かわ。きれいな かわ'],
+  ['田','た / だ','田（た）んぼ','た、だ。たんぼ'],
+  ['石','いし','まるい 石（いし）','いし。まるい いし'],
+  ['玉','たま','めだま・宝玉（ぎょく）','たま。たからものの たま'],
+  ['竹','たけ','竹（たけ）やぶ','たけ。たけやぶ'],
+  ['雨','あめ','雨（あめ）が ふる','あめ。あめが ふる'],
+  ['空','そら / から','あおい 空（そら）','そら。あおい そら'],
+  ['天','てん','いい 天（てん）き','てん。いい てんき'],
+  ['気','き','元（げん）気（き）','き。げんき'],
+
+  // 4. いきもの・しょくぶつ (30-40)
+  ['夕','ゆう','夕（ゆう）がた','ゆう。ゆうがた'],
+  ['花','はな','きれいな 花（はな）','はな。きれいな はな'],
+  ['草','くさ','みちの 草（くさ）','くさ。みちの くさ'],
+  ['林','はやし','木が ならぶ 林（はやし）','はやし。きが ならぶ はやし'],
+  ['森','もり','ひろい 森（もり）','もり。ひろい もり'],
+  ['犬','いぬ','かわいい 犬（いぬ）','いぬ。かわいい いぬ'],
+  ['虫','むし','虫（むし）を さがす','むし。むしを さがす'],
+  ['貝','かい','うみの 貝（かい）がら','かい。うみの かいがら'],
+  ['糸','いと','あかい 糸（いと）','いと。あかい いと'],
+  ['車','くるま / しゃ','でん車（しゃ）・車（くるま）','くるま、しゃ。でんしゃ、くるま'],
+
+  // 5. ひとと からだ (40-50)
+  ['人','ひと / じん','やさしい 人（ひと）','ひと、じん。やさしい ひと'],
+  ['子','こ','元（げん）気な 子（こ）','こ。げんきな こ'],
+  ['女','おんな / じょ','女（おんな）の 子（こ）','おんな、じょ。おんなのこ'],
+  ['男','おとこ / だん','男（おとこ）の 子（こ）','おとこ、だん。おとこのこ'],
+  ['目','め','きらきらした 目（め）','め。きらきらした め'],
+  ['耳','みみ','耳（みみ）を すます','みみ。みみを すます'],
+  ['口','くち','おおきな 口（くち）','くち。おおきな くち'],
+  ['手','て','手（て）を つなぐ','て。てを つなぐ'],
+  ['足','あし / た(す)','足（あし）が はやい','あし、たす。あしが はやい'],
+  ['力','ちから','力（ちから）を あわせる','ちから。ちからを あわせる'],
+
+  // 6. ばしょと かたち (50-60)
+  ['上','うえ / あ(がる)','つくえの 上（うえ）','うえ、あがる。つくえの うえ'],
+  ['下','した / さ(がる)','つくえの 下（した）','した、さがる。つくえの した'],
+  ['左','ひだり','左（ひだり）の 手（て）','ひだり。ひだりの て'],
+  ['右','みぎ','右（みぎ）の 手（て）','みぎ。みぎの て'],
+  ['中','なか / ちゅう','かばんの 中（なか）','なか、ちゅう。かばんの なか'],
+  ['大','おお(きい) / だい','大（おお）きい 声','おおきい、だい。おおきい こえ'],
+  ['小','ちい(さい) / しょう','小（ちい）さい 花','ちいさい、しょう。ちいさい はな'],
+  ['本','ほん / もと','だいすきな 本（ほん）','ほん、もと。だいすきな ほん'],
+  ['正','ただ(しい) / せい','正（ただ）しい こたえ','ただしい、せい。ただしい こたえ'],
+  ['王','おう','王（おう）さま','おう。おうさま'],
+
+  // 7. がっこうの かんじ (60-70)
+  ['学','がく / まな(ぶ)','学（がっ）校（こう）','がく、まなぶ。がっこう'],
+  ['校','こう','たのしい 学（がっ）校（こう）','こう。たのしい がっこう'],
+  ['先','せん / さき','先（せん）生（せい）','せん、さき。せんせい'],
+  ['生','せい / い(きる)','一（いち）年 生（せい）','せい、いきる。いちねんせい'],
+  ['字','じ','かん字（じ）を かく','じ。かんじを かく'],
+  ['文','ぶん / も','文（ぶん）を よむ','ぶん、も。ぶんを よむ'],
+  ['名','な / めい','名（な）前（まえ）','な、めい。なまえ'],
+  ['立','た(つ) / りつ','席（せき）を 立（た）つ','たつ、りつ。せきを たつ'],
+  ['休','やす(む) / きゅう','昼（ひる）休（やす）み','やすむ、きゅう。ひるやすみ'],
+  ['見','み(る) / けん','空（そら）を 見（み）る','みる、けん。そらを みる'],
+
+  // 8. うごき・いろ・くらし (70-80)
+  ['入','はい(る) / い(れる)','へやに 入（はい）る','はいる、いれる。へやに はいる'],
+  ['出','で(る) / だ(す)','そとに 出（で）る','でる、だす。そとに でる'],
+  ['早','はや(い)','早（はや）おき する','はやい。はやおき する'],
+  ['音','おと / おん','音楽（おんがく）の 音（おと）','おと、おん。おんがくの おと'],
+  ['白','しろ(い) / はく','白（しろ）い くも','しろい、はく。しろい くも'],
+  ['赤','あか(い) / せき','赤（あか）い りんご','あかい、せき。あかい りんご'],
+  ['青','あお(い) / せい','青（あお）い うみ','あおい、せい。あおい うみ'],
+  ['円','えん / まる(い)','百（ひゃく）円（えん）玉','えん、まるい。ひゃくえんだま'],
+  ['町','まち','わたしの 町（まち）','まち。わたしの まち'],
+  ['村','むら','しずかな 村（むら）','むら。しずかな むら']
+];
+
+const chars = kanjiList.map(k => k[0]);
+const sounds = kanjiList.map(k => k[1]);
+const words = kanjiList.map(k => k[2]);
+const speeches = kanjiList.map(k => k[3]);
+
+const rows = [
+  ['① かずの かんじ', 0, 10],
+  ['② かずと ようび', 10, 20],
+  ['③ しぜんの かんじ', 20, 30],
+  ['④ いきもの・しょくぶつ', 30, 40],
+  ['⑤ ひとと からだ', 40, 50],
+  ['⑥ ばしょと かたち', 50, 60],
+  ['⑦ がっこうの かんじ', 60, 70],
+  ['⑧ うごき・いろ・くらし', 70, 80]
+];
+
+const $=id=>document.getElementById(id), canvas=$('canvas'), ctx=canvas.getContext('2d');
+let idx=0, guide=true, autoShownGuide=false, done=new Set(), drawing=false, inkStrokes=[], currentStroke=[], refPaths=[], raf=0, playing=false, shownStrokes=0, loadToken=0, resizeTimer;
+
+// モード管理（じゅんばん / ランダム）
+let isRandom=false, randomOrder=[], randomPos=0;
+
+// 効果音（Web Audio API）＆ 音声読み上げ（Web Speech API）
+let soundEnabled=true, audioCtx=null;
+function getAudio(){
+  if(!soundEnabled)return null;
+  if(!audioCtx){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(AC)audioCtx=new AC();
+  }
+  if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq,type,duration,delay=0,vol=0.12,endFreq=null){
+  const ac=getAudio();if(!ac)return;
+  const t=ac.currentTime+delay;
+  const osc=ac.createOscillator(), gain=ac.createGain();
+  osc.type=type;
+  osc.frequency.setValueAtTime(freq,t);
+  if(endFreq)osc.frequency.exponentialRampToValueAtTime(endFreq,t+duration);
+  gain.gain.setValueAtTime(0.001,t);
+  gain.gain.linearRampToValueAtTime(vol,t+0.015);
+  gain.gain.exponentialRampToValueAtTime(0.001,t+duration);
+  osc.connect(gain);gain.connect(ac.destination);
+  osc.start(t);osc.stop(t+duration+0.02);
+}
+const sfx={
+  click:()=>playTone(520,'sine',0.07,0,0.09,660),
+  toggle:()=>playTone(640,'triangle',0.09,0,0.1,820),
+  erase:()=>{playTone(420,'sine',0.11,0,0.1,220);playTone(300,'triangle',0.12,0.04,0.08,160)},
+  pen:()=>playTone(380,'sine',0.04,0,0.04,460),
+  stroke:()=>playTone(700,'sine',0.08,0,0.08,880),
+  warn:()=>{playTone(330,'sine',0.1,0,0.1,280);playTone(280,'sine',0.14,0.09,0.1,240)},
+  done:()=>{
+    [[523.25,0],[659.25,0.09],[783.99,0.18],[1046.5,0.27]].forEach(([f,d])=>playTone(f,'triangle',0.22,d,0.15));
+  },
+  fanfare:()=>{
+    [[523.25,0],[659.25,0.1],[783.99,0.2],[1046.5,0.3],[783.99,0.45],[1046.5,0.58]].forEach(([f,d],i)=>playTone(f,'triangle',i===5?0.45:0.18,d,0.18));
+  }
+};
+
+// 漢字の音声読み上げ関数
+function speakCurrentKanji(force=false){
+  if((!soundEnabled && !force) || !('speechSynthesis' in window))return;
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(speeches[idx]);
+    u.lang = 'ja-JP';
+    u.rate = 0.9; // 1年生が聞き取りやすいよう少しゆっくりめ
+    u.pitch = 1.05;
+    const voices = window.speechSynthesis.getVoices();
+    const jaVoice = voices.find(v => v.lang && v.lang.startsWith('ja'));
+    if(jaVoice) u.voice = jaVoice;
+    window.speechSynthesis.speak(u);
+  }catch(e){
+    console.warn('Speech synthesis failed:', e);
+  }
+}
+if('speechSynthesis' in window){
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+function makeRandomOrder(currentIdx){
+  const rest=chars.map((_,i)=>i).filter(i=>i!==currentIdx);
+  for(let i=rest.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [rest[i],rest[j]]=[rest[j],rest[i]];
+  }
+  randomOrder=[currentIdx,...rest];
+  randomPos=0;
+}
+
+function dims(){return canvas.getBoundingClientRect()}
+function resize(){
+  const r=dims();if(!r.width||!r.height)return;
+  const d=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(r.width*d);canvas.height=Math.round(r.height*d);ctx.setTransform(d,0,0,d,0,0);ctx.lineCap='round';ctx.lineJoin='round';
+  drawAll();
+}
+function drawBase(){
+  const r=dims(),w=r.width,h=r.height;if(!w||!h)return;ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle='#e8e0cd';ctx.lineWidth=1;ctx.setLineDash([4,5]);ctx.beginPath();ctx.moveTo(w*.1,h*.5);ctx.lineTo(w*.9,h*.5);ctx.moveTo(w*.5,h*.07);ctx.lineTo(w*.5,h*.93);ctx.stroke();ctx.setLineDash([]);
+  if(guide){
+    ctx.fillStyle='#e5dfd0';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font=`700 ${Math.floor(Math.min(h*.72,w*.65))}px "UD Digi Kyokasho N-R","UD Digi Kyokasho NP-R","Yu Kyokasho","BIZ UDPMincho","Yu Mincho","Hiragino Mincho ProN",serif`;
+    ctx.fillText(chars[idx],w/2,h/2);
+  }
+}
+function redrawInk(){
+  for(const stroke of inkStrokes){
+    if(!stroke.length)continue;
+    ctx.beginPath();
+    ctx.moveTo(stroke[0].x,stroke[0].y);
+    if(stroke.length===1){
+      ctx.lineTo(stroke[0].x+.1,stroke[0].y+.1);
+    }else{
+      for(let i=1;i<stroke.length;i++)ctx.lineTo(stroke[i].x,stroke[i].y);
+    }
+    ctx.strokeStyle='#2674df';ctx.lineWidth=7;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+  }
+}
+function clearInk(){inkStrokes=[];currentStroke=[];drawing=false;drawAll();}
+function drawAll(){drawBase();redrawInk();}
+
+function hasDrawnInk(){
+  const totalPoints=inkStrokes.reduce((sum,s)=>sum+s.length,0);
+  return inkStrokes.length>0 && totalPoints>=3;
+}
+
+function select(i, playSfx=true, speak=true){
+  if(autoShownGuide){
+    guide=false;
+    autoShownGuide=false;
+  }
+  idx=(i+chars.length)%chars.length;
+  if(isRandom){
+    const found=randomOrder.indexOf(idx);
+    if(found!==-1)randomPos=found;
+    else makeRandomOrder(idx);
+  }
+  if(playSfx)sfx.click();
+  if(speak)speakCurrentKanji();
+  stopAnimation();
+  clearInk();
+  update();
+  loadStrokeData();
+  $('message').textContent=guide?'うすい かんじを なぞってみよう！ ✏️':'じぶんで かいてみよう！ かけたら「できた！」をおしてね 🌟';
+}
+
+function update(){
+  $('big').textContent=chars[idx];
+  $('sound').textContent=sounds[idx];$('word').textContent=words[idx];
+  const row=rows.find(x=>idx>=x[1]&&idx<x[2])||rows[0];
+  $('rowname').textContent=isRandom?`${row[0]}（🎲 ランダム）`:row[0];
+  $('position').textContent=isRandom?`${randomPos+1} / ${chars.length}`:`${idx+1} / ${chars.length}`;
+  $('count').textContent=done.size;
+  $('progress').style.width=(done.size/chars.length*100)+'\%';$('guide').textContent='👁️ おてほん '+(guide?'ON':'OFF');
+  $('guide').className=guide?'active':'soft';$('modehint').textContent=guide?'おてほんを なぞってみよう':'おてほんなしで かいてみよう';
+  $('modeSeq').className=!isRandom?'active':'soft';
+  $('modeRand').className=isRandom?'active':'soft';$('soundToggle').textContent=soundEnabled?'🔊 おと ON':'🔇 おと OFF';
+  $('prev').disabled=isRandom?(randomPos===0):(idx===0);
+  const isLast=isRandom?(randomPos===chars.length-1):(idx===chars.length-1);
+  $('next').textContent=isLast?'さいしょへ ↻':'つぎへ →';
+  const g=$('letters');g.innerHTML='';
+  chars.forEach((c,i)=>{
+    let b=document.createElement('button');
+    b.className='letter'+(done.has(i)?' done':'')+(idx===i?' current':'');
+    b.textContent=c;
+    b.setAttribute('aria-label',c+'をれんしゅう');
+    b.onclick=()=>select(i,true,true);
+    g.appendChild(b);
+  });
+  drawAll();
+}
+
+function getPoint(e){const r=dims();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);drawing=true;sfx.pen();currentStroke=[getPoint(e)];inkStrokes.push(currentStroke);ctx.beginPath();ctx.moveTo(currentStroke[0].x,currentStroke[0].y);ctx.lineWidth=7;ctx.strokeStyle='#2674df';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineTo(currentStroke[0].x+.1,currentStroke[0].y+.1);ctx.stroke()});
+canvas.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const p=getPoint(e);currentStroke.push(p);const n=currentStroke.length;ctx.beginPath();ctx.moveTo(currentStroke[n-2].x,currentStroke[n-2].y);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#2674df';ctx.lineWidth=7;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke()});
+function endStroke(){drawing=false;currentStroke=[]}canvas.addEventListener('pointerup',endStroke);canvas.addEventListener('pointercancel',endStroke);
+
+// 漢字や「もういちどきく」ボタンをタップしたときに読み上げる
+$('big').onclick=()=>{sfx.click();speakCurrentKanji(true);};$('speakBtn').onclick=()=>{sfx.click();speakCurrentKanji(true);};
+
+// モード切替（じゅんばん / ランダム）
+$('modeSeq').onclick=()=>{
+  if(!isRandom)return;
+  isRandom=false;
+  sfx.toggle();
+  update();
+  speakCurrentKanji();
+  $('message').textContent='じゅんばんモードで れんしゅうするよ！ 🔢';
+};
+$('modeRand').onclick=()=>{
+  if(autoShownGuide){
+    guide=false;
+    autoShownGuide=false;
+  }
+  isRandom=true;
+  makeRandomOrder(idx);
+  if(chars.length>1){
+    randomPos=1;
+    idx=randomOrder[randomPos];
+    stopAnimation();
+    clearInk();
+    loadStrokeData();
+  }
+  sfx.toggle();
+  update();
+  speakCurrentKanji();
+  $('message').textContent='ランダムモード！ いろんな かんじが でてくるよ 🎲';
+};
+
+// 効果音＆読み上げ ON/OFF
+$('soundToggle').onclick=()=>{
+  soundEnabled=!soundEnabled;
+  if(!soundEnabled && 'speechSynthesis' in window){
+    window.speechSynthesis.cancel();
+  }
+  if(soundEnabled){
+    sfx.toggle();
+    speakCurrentKanji();
+  }
+  update();
+};
+
+// おてほん ON/OFF
+$('guide').onclick=()=>{
+  guide=!guide;
+  autoShownGuide=false;
+  sfx.toggle();
+  update();
+  $('message').textContent=guide?'うすい かんじを 表示したよ！ ✏️':'おてほんを かくしたよ。じぶんで かいてみよう！';
+};
+
+// けす
+$('erase').onclick=()=>{
+  if(autoShownGuide){
+    guide=false;
+    autoShownGuide=false;
+  }
+  sfx.erase();
+  clearInk();
+  update();
+  $('message').textContent='きえたよ！ もういちど かいてみよう！ ✏️';
+};
+
+// まえへ / つぎへ（切り替え時に自動で読み上げ）
+$('prev').onclick=()=>{ if(isRandom){ if(randomPos>0){randomPos--;select(randomOrder[randomPos],true,true);} }else{ select(idx-1,true,true); } };$('next').onclick=()=>{
+  if(isRandom){
+    if(randomPos>=chars.length-1){
+      makeRandomOrder(idx);
+      randomPos=1;
+      select(randomOrder[randomPos],true,true);
+    }else{
+      randomPos++;
+      select(randomOrder[randomPos],true,true);
+    }
+  }else{
+    select(idx===chars.length-1?0:idx+1,true,true);
+  }
+};
+
+// できた！
+$('donebtn').onclick=()=>{
+  if(!hasDrawnInk()){
+    sfx.warn();
+    $('message').textContent='まずは かんじを かいてみよう！ ✏️';
+    return;
+  }
+  const wasOff=!guide;
+  done.add(idx);
+  if(!guide){
+    guide=true;
+    autoShownGuide=true;
+  }
+  update();
+  if(done.size===chars.length){
+    sfx.fanfare();
+    $('message').textContent=(wasOff||autoShownGuide)
+      ?'80字 ぜんぶ れんしゅうできたね！ かんじ めいじん！ 🏆 おてほんと くらべてみよう！'
+      :'80字 ぜんぶ れんしゅうできたね！ かんじ めいじん！ 🏆';
+  }else{
+    sfx.done();
+    if(wasOff||autoShownGuide){
+      $('message').textContent='おてほんと くらべてみよう！ もういちど かくときは「けす」をおしてね ⭐';
+    }else{
+      $('message').textContent='よく がんばったね！ おてほんと くらべてみよう！ ⭐';
+    }
+  }
+};
+
+$('prevrow').onclick=()=>{let r=rows.findIndex(x=>idx>=x[1]&&idx<x[2]);select(rows[Math.max(0,r-1)][1],true,true)};$('nextrow').onclick=()=>{let r=rows.findIndex(x=>idx>=x[1]&&idx<x[2]);select(rows[Math.min(rows.length-1,r+1)][1],true,true)};
+
+// 書き順データの読み込み（AnimCJKの日本の漢字SVGデータを使用）
+function stopAnimation(){playing=false;if(raf)cancelAnimationFrame(raf);raf=0;drawAll()}
+function strokeFetchUrl(c){
+  const code = c.codePointAt(0);
+  return `https://cdn.jsdelivr.net/gh/parsimonhi/animCJK@master/svgsJa/${code}.svg`;
+}
+
+// SVGのシンプルな折れ線path（M x y L x y ...）から座標配列を抽出
+function parseMedianPath(d){
+  const nums = (d.match(/-?\d+(?:\.\d+)?/g)||[]).map(Number);
+  const pts = [];
+  for(let i=0;i+1<nums.length;i+=2){
+    pts.push([nums[i], nums[i+1]]);
+  }
+  return pts;
+}
+
+async function loadStrokeData(){
+  const token=++loadToken;stopAnimation();refPaths=[];shownStrokes=0;
+  $('strokeinfo').textContent='かんじの書き順データを読み込んでいます…';
+  try{
+    const response=await fetch(strokeFetchUrl(chars[idx]),{cache:'force-cache'});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const svgText=await response.text();
+    if(token!==loadToken)return;
+    const doc=new DOMParser().parseFromString(svgText,'image/svg+xml');
+    // animCJKのSVGは clip-path外の実線pathがmedians（中心線）になっている
+    const medianEls=Array.from(doc.querySelectorAll('path[clip-path]'));
+    refPaths=medianEls.map((el,i)=>{
+      const d=el.getAttribute('d')||'';
+      return {id:String(i+1), d, median:parseMedianPath(d)};
+    }).filter(p=>p.median.length>0);
+
+    if(!refPaths.length)throw new Error('no stroke paths');
+    $('strokeinfo').textContent=`「${chars[idx]}」は ${refPaths.length}画。赤い線を見て、丸の位置から書こう。`;
+  }catch(err){
+    if(token!==loadToken)return;
+    refPaths=[];
+    $('strokeinfo').textContent='書き順データを読み込めませんでした。ネット接続を確認して、ページを再読み込みしてね。';
+    console.error('Kanji stroke data load failed:',err);
+  }
+}
+
+function drawAnimated(count){
+  drawAll();
+  const r=dims(),scale=Math.min((r.width-34)/1024,(r.height-34)/1024),ox=(r.width-1024*scale)/2,oy=(r.height-1024*scale)/2;
+  ctx.save();ctx.strokeStyle='#ef4444';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';
+  for(let i=0;i<Math.min(count,refPaths.length);i++){
+    const pts=refPaths[i].median||[];
+    if(pts.length){
+      ctx.beginPath();ctx.moveTo(ox+pts[0][0]*scale,oy+pts[0][1]*scale);
+      for(let j=1;j<pts.length;j++)ctx.lineTo(ox+pts[j][0]*scale,oy+pts[j][1]*scale);
+      ctx.stroke();
+      ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(ox+pts[0][0]*scale,oy+pts[0][1]*scale,5,0,Math.PI*2);ctx.fill();
+    }
+  }
+  ctx.restore();
+  $('strokeinfo').textContent=`「${chars[idx]}」：${Math.min(count,refPaths.length)} / ${refPaths.length}画`;
+}
+
+function animate(){
+  if(!refPaths.length){$('strokeinfo').textContent='書き順データをまだ読み込めていません。';return}
+  playing=true;let start=performance.now(),duration=900,lastCount=0;
+  function step(now){
+    if(!playing)return;
+    let elapsed=now-start;
+    let count=Math.min(refPaths.length,Math.floor(elapsed/duration)+1);
+    if(count!==lastCount){sfx.stroke();lastCount=count;}
+    drawAnimated(count);
+    if(count<refPaths.length){raf=requestAnimationFrame(step)}
+    else{playing=false;raf=0;$('strokeinfo').textContent=`「${chars[idx]}」：${refPaths.length}画 おわり！ もういちど書いてみよう。`}
+  }
+  drawAnimated(0);raf=requestAnimationFrame(step);
+}
+$('play').onclick=()=>animate();
+$('pause').onclick=()=>{sfx.click();stopAnimation();$('strokeinfo').textContent='一時停止しました。▶ さいせい で続けて見られます。'};
+$('one').onclick=()=>{stopAnimation();if(!refPaths.length)return;sfx.stroke();$('strokeinfo').textContent=`「${chars[idx]}」：${Math.min(refPaths.length,shownStrokes+1)} / ${refPaths.length}画`;shownStrokes=Math.min(refPaths.length,shownStrokes+1);drawAnimated(shownStrokes)};
+$('restart').onclick=()=>{sfx.click();stopAnimation();shownStrokes=0;if(refPaths.length)drawAnimated(0);else drawAll();$('strokeinfo').textContent=refPaths.length?`「${chars[idx]}」：0 / ${refPaths.length}画`:'書き順データを読み込んでいます…'};
+
+if('ResizeObserver'in window)new ResizeObserver(()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{resize();},80)}).observe(canvas.parentElement);else window.addEventListener('resize',resize);
+resize();update();loadStrokeData();
+})();
+</script>
+</body>
+</html>
